@@ -7,7 +7,7 @@ const cors = require("cors");
 const OpenAI = require("openai");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
-
+const puppeteer = require("puppeteer");
 dotenv.config({ path: "./.env" });
 
 const openai = new OpenAI({
@@ -76,91 +76,91 @@ app.get("/getResumes/:uid", async (req, res) => {
   }
 });
 
-app.post("/askai", async (req, res) => {
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo",
-      messages: [
-        { role: "system", content: "You are a Resume Analyser." },
-        {
-          role: "user",
-          content: `This is a resume for ${
-            req.body.profile ? req.body.profile : ""
-          }. The Content of the Resume is as follows : ${
-            req.body.content ? req.body.content : ""
-          } for ${
-            req.body.company ? req.body.company : ""
-          }. Give me a full detailed and comprehensive analysis about the 
-          resume , regarding how it can be improved , based on the provided input data. Use example from input data to show the result.Strictly give an well designed HTML output of the analysed report , so that I can render
-          on my website , with good styling [Note - Dont add any supporting text , just focus on the result, dont add newline in output].Use below format as demo, for analysis report
-          
-Resume Analysis Report - Amol Verma
-Personal Information
+app.post("/askai", async function (req, res) {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4-turbo",
+    messages: [
+      { role: "system", content: "You are a Resume Analyser." },
+      {
+        role: "user",
+        content: `This is a resume for ${
+          req.body.profile ? req.body.profile : ""
+        }. The Content of the Resume is as follows : ${
+          req.body.content ? req.body.content : ""
+        } for ${
+          req.body.company ? req.body.company : ""
+        }. Give me a full detailed and comprehensive analysis about the
+            resume , regarding how it can be improved , based on the provided input data. Use example from input data to show the result.Strictly give an well designed HTML output of the analysed report , so that I can render
+            on my website , with good styling [Note - Dont add any supporting text , just focus on the result, dont add newline in output].Use below format as demo, for analysis report
 
-Name: Amol Verma
+  Resume Analysis Report - Amol Verma
+  Personal Information
 
-Profile: Software Developer
+  Name: Amol Verma
 
-Summary: A passionate software developer and engineer. Motivated to learn more in a collaborative environment.
+  Profile: Software Developer
 
-Skills: MongoDB, SQL, PostgreSQL, React.js, Next.js, TailwindCSS
+  Summary: A passionate software developer and engineer. Motivated to learn more in a collaborative environment.
 
-Improvement:
+  Skills: MongoDB, SQL, PostgreSQL, React.js, Next.js, TailwindCSS
 
-    Skills should be categorized (e.g., Front-End, Back-End, Database) for clarity.
-    Email address and phone should be made clickable for easy contact.
+  Improvement:
 
-Projects
-1. Acadhut - An education oriented social media
+      Skills should be categorized (e.g., Front-End, Back-End, Database) for clarity.
+      Email address and phone should be made clickable for easy contact.
 
-Description: Made with Redux, MERN, TailwindCSS.
-2. Facebook Clone
+  Projects
+  1. Acadhut - An education oriented social media
 
-Description: Made with Redux, MERN, TailwindCSS.
+  Description: Made with Redux, MERN, TailwindCSS.
+  2. Facebook Clone
 
-Improvement:
+  Description: Made with Redux, MERN, TailwindCSS.
 
-    Include specifics about the role undertaken in the projects and features implemented.
-    Adding GitHub links for project codebase can enhance credibility and showcase practical skills.
+  Improvement:
 
-Education
+      Include specifics about the role undertaken in the projects and features implemented.
+      Adding GitHub links for project codebase can enhance credibility and showcase practical skills.
 
-12th: 76.2% - Details about the institution or relevant coursework should be provided.
+  Education
 
-11th: 72% - It's unusual to list grades from individual school years without context. Consider including significant achievements or coursework.
+  12th: 76.2% - Details about the institution or relevant coursework should be provided.
 
-Improvement:
+  11th: 72% - It's unusual to list grades from individual school years without context. Consider including significant achievements or coursework.
 
-    Update educational qualifications with information about your degree or recent relevant certifications.
+  Improvement:
 
-Work Experience
+      Update educational qualifications with information about your degree or recent relevant certifications.
 
-Improvement:
+  Work Experience
 
-    Replace generic placeholders with actual job titles and descriptions.
-    Highlight responsibilities, technologies used, and accomplishments in each role.
+  Improvement:
 
-Awards
+      Replace generic placeholders with actual job titles and descriptions.
+      Highlight responsibilities, technologies used, and accomplishments in each role.
 
-Improvement:
+  Awards
 
-    Actual awards and recognitions should be listed to boost the profile's strength.
+  Improvement:
 
-`,
-        },
-      ],
-    });
-    const doc = new PDFDocument();
-    doc.pipe(fs.createWriteStream("example.pdf"));
-    doc.fontSize(27).text(`${response.choices[0].message.content}`, 100, 100);
-    doc.end();
+      Actual awards and recognitions should be listed to boost the profile's strength.
 
-    res.json({
-      data: response.choices[0].message.content,
-    });
-  } catch (error) {
-    console.log(error);
-  }
+  `,
+      },
+    ],
+  });
+
+  const browser = await puppeteer.launch();
+
+  const page = await browser.newPage();
+
+  await page.setContent(response.choices[0].message.content);
+
+  await page.pdf({ path: "./reports/example2.pdf", format: "A4" });
+
+  await browser.close();
+
+  res.download("reports/example2.pdf");
 });
 
 //console
