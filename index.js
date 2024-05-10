@@ -4,6 +4,17 @@ const mongoose = require("mongoose");
 const Resume = require("./models/resumeModel");
 const app = express();
 const cors = require("cors");
+const OpenAI = require("openai");
+const PDFDocument = require("pdfkit");
+const fs = require("fs");
+
+dotenv.config({ path: "./.env" });
+
+const openai = new OpenAI({
+  organization: "org-pDUEKTSP6zdjnwVK57S4AyfL",
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 app.use(
   cors({
     origin: "*",
@@ -17,12 +28,14 @@ process.on("uncaughtException", (err) => {
   process.exit(1);
 });
 
-dotenv.config({ path: "./.env" });
 const DB = process.env.DATABASE;
 app.use(express.json());
 //console
 mongoose
-  .connect(DB, {})
+  .connect(
+    "mongodb+srv://amolverma:iloveicecream.9@cluster0.mplpzcy.mongodb.net/resumeAnalyzer",
+    {}
+  )
   .then((con) => {
     // console.log(con.connections);
     console.log("Database connected");
@@ -58,6 +71,93 @@ app.get("/getResumes/:uid", async (req, res) => {
     const resume = await Resume.find({ userid: req.params.uid });
 
     res.json(resume);
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+app.post("/askai", async (req, res) => {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-turbo",
+      messages: [
+        { role: "system", content: "You are a Resume Analyser." },
+        {
+          role: "user",
+          content: `This is a resume for ${
+            req.body.profile ? req.body.profile : ""
+          }. The Content of the Resume is as follows : ${
+            req.body.content ? req.body.content : ""
+          } for ${
+            req.body.company ? req.body.company : ""
+          }. Give me a full detailed and comprehensive analysis about the 
+          resume , regarding how it can be improved , based on the provided input data. Use example from input data to show the result.Strictly give an well designed HTML output of the analysed report , so that I can render
+          on my website , with good styling [Note - Dont add any supporting text , just focus on the result, dont add newline in output].Use below format as demo, for analysis report
+          
+Resume Analysis Report - Amol Verma
+Personal Information
+
+Name: Amol Verma
+
+Profile: Software Developer
+
+Summary: A passionate software developer and engineer. Motivated to learn more in a collaborative environment.
+
+Skills: MongoDB, SQL, PostgreSQL, React.js, Next.js, TailwindCSS
+
+Improvement:
+
+    Skills should be categorized (e.g., Front-End, Back-End, Database) for clarity.
+    Email address and phone should be made clickable for easy contact.
+
+Projects
+1. Acadhut - An education oriented social media
+
+Description: Made with Redux, MERN, TailwindCSS.
+2. Facebook Clone
+
+Description: Made with Redux, MERN, TailwindCSS.
+
+Improvement:
+
+    Include specifics about the role undertaken in the projects and features implemented.
+    Adding GitHub links for project codebase can enhance credibility and showcase practical skills.
+
+Education
+
+12th: 76.2% - Details about the institution or relevant coursework should be provided.
+
+11th: 72% - It's unusual to list grades from individual school years without context. Consider including significant achievements or coursework.
+
+Improvement:
+
+    Update educational qualifications with information about your degree or recent relevant certifications.
+
+Work Experience
+
+Improvement:
+
+    Replace generic placeholders with actual job titles and descriptions.
+    Highlight responsibilities, technologies used, and accomplishments in each role.
+
+Awards
+
+Improvement:
+
+    Actual awards and recognitions should be listed to boost the profile's strength.
+
+`,
+        },
+      ],
+    });
+    const doc = new PDFDocument();
+    doc.pipe(fs.createWriteStream("example.pdf"));
+    doc.fontSize(27).text(`${response.choices[0].message.content}`, 100, 100);
+    doc.end();
+
+    res.json({
+      data: response.choices[0].message.content,
+    });
   } catch (error) {
     console.log(error);
   }
